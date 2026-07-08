@@ -1,0 +1,6 @@
+{
+  "name": "CCC AI Workspace",
+  "description": "A lightweight local-first AI coding workspace optimized for repository understanding and assisted development, powered by CCC.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
