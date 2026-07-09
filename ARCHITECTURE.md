@@ -1,204 +1,87 @@
 # ARCHITECTURE.md
 
-## System Overview
+## System Architecture
 
-The system is a lightweight local-first AI coding runtime built around CCC (Code Context Compiler).
+This document outlines the architectural blueprint of the CCC AI Workspace (MiMo) application.
 
-CCC provides deterministic repository cognition.
-The runtime orchestrates:
-- AI models
-- Tools
-- Memory
-- Tasks
-- Skills
+---
 
-The architecture prioritizes:
-- Simplicity
-- Speed
-- Local execution
-- Deterministic context assembly
-- Mobile usability
+### 1. High-Level Component Layout
+The system implements a dual-layer local-first architecture: a React PWA frontend communicating over WebSockets to a Node.js full-stack Express server, backed by SQLite and a Code Context Compiler (CCC) adapter.
 
-## High-Level Architecture
+```
+       ┌──────────────────────────────┐
+       │     PWA Frontend (React)     │
+       └──────────────────────────────┘
+                      ▲
+                      │ (WebSockets & REST APIs)
+                      ▼
+       ┌──────────────────────────────┐
+       │    Runtime Server (Express)  │
+       │   - Session Manager          │
+       │   - Task service (SQLite)    │
+       │   - Approval Gate            │
+       │   - Memory Service (SQLite)  │
+       └──────────────────────────────┘
+                      ▲
+                      │ (Bridge CLI / Fallbacks)
+                      ▼
+       ┌──────────────────────────────┐
+       │     CCC Adapter (Python)     │
+       │   - Symbol Resolver          │
+       │   - Dependency Tracer        │
+       │   - Code Base Indexer        │
+       └──────────────────────────────┘
+```
 
-┌────────────────────────────────────┐
-│              Web UI                │
-│        PWA / Mobile First          │
-└────────────────────────────────────┘
-                  │
-                  ▼
-┌────────────────────────────────────┐
-│           Runtime Server           │
-│                                    │
-│ - Chat Session Manager             │
-│ - Task Executor                    │
-│ - Tool Orchestrator                │
-│ - Context Composer                 │
-│ - Model Router                     │
-│ - Memory Manager                   │
-│ - Skill Runtime                    │
-└────────────────────────────────────┘
-                  │
-                  ▼
-┌────────────────────────────────────┐
-│         CCC Intelligence           │
-│                                    │
-│ - Query Engine                     │
-│ - Dependency Analysis              │
-│ - Symbol Resolution                │
-│ - Workspace Analysis               │
-│ - Convention Extraction            │
-│ - Impact Analysis                  │
-└────────────────────────────────────┘
-                  │
-                  ▼
-┌────────────────────────────────────┐
-│             Repository             │
-│        Files / Git / Tests         │
-└────────────────────────────────────┘
+* **Confidence**: `High` (Matches verified package structure and imported files).
 
-## Core Principles
+---
 
-### CCC Is The Source Of Repository Truth
-The runtime MUST NOT duplicate:
-- Indexing
-- Dependency analysis
-- Symbol resolution
-- Architecture extraction
+### 2. Data Flow & Source of Truth
+* **State Management**:
+  - The UI maintains active session messages and active task progress states.
+  - **Single Source of Truth (Database)**: Task lists, statuses, and repository memories are persisted in local SQLite databases, indexed by repository path.
+  - **Single Source of Truth (Filesystem)**: The physical files inside active directories are read/written directly via the `fs/promises` toolsets.
+* **WebSocket Flow**:
+  1. The user inputs a prompt or uploads a file.
+  2. The prompt is dispatched over WebSockets to the server.
+  3. The server processes the request, routing tool calls (such as CCC, search, command, git status/diff, or writes) through approval checks.
+  4. Large/overwriting file-write tools are halted inside `approvalManager`, which registers the pending operation and fires a `pending_approval` WebSocket frame back to the client.
+  5. The client reviews the diff, clicks Approve/Reject, sending an `approve_write` event to release the block and proceed with the write or return an abort error.
+  6. Conversational tokens are streamed back in real-time.
 
-Those responsibilities belong to CCC. The runtime consumes CCC artifacts and query APIs.
+* **Confidence**: `High` (Directly verified in `server.ts`, `src/App.tsx`, and `src/server/approvalManager.ts`).
 
-### Local First
-The system should:
-- Run locally
-- Store memory locally
-- Execute tools locally
-- Avoid cloud infrastructure dependencies
+---
 
-Only relevant context should be sent to models.
+### 3. Core Subsystems & Integrations
+* **CCC Cognition Adapter (`src/server/ccc/index.ts`)**:
+  - Coordinates Python bridge commands (`ccc_bridge.py`) for index-heavy symbol mapping.
+  - Implements fully redundant, zero-dependency Node.js fallback mechanisms using highly optimized text/regex scanning algorithms.
+* **Task Planner & Status Tracker (`src/server/taskService.ts`)**:
+  - Automatically structures larger engineering operations into organized task sequences, tracking states such as pending, active, completed, or failed.
+* **Memory Indexer (`src/server/memory.ts`)**:
+  - Saves architectural findings and facts into a database index for subsequent context retrieval.
+* **Integrated Version Control (Git)**:
+  - Leverages local host shell instances to call `git status` and `git diff` on target directories, formatting outputs cleanly for AI prompt alignment.
 
-### Human-Governed Automation
-The runtime may:
-- Propose edits
-- Generate plans
-- Execute tasks
+* **Confidence**: `High` (Validated via code inspections and successful builds).
 
-But destructive actions require user approval.
+---
 
-### Thin Runtime
-The runtime should remain lightweight. Avoid:
-- Microservices
-- Distributed orchestration
-- Autonomous swarms
-- Excessive abstraction
+### 4. Deployment Model
+* **Model**: Local-first or self-hosted workspace container (e.g., Cloud Run or local desktop).
+* **Network Constraints**: Port 3000 is the sole externally accessible port routed via the reverse proxy. All WebSocket traffic binds to the Express listener on `0.0.0.0:3000`.
 
-## Runtime Responsibilities
+* **Confidence**: `High` (Consistent with the environment parameters and platform rules).
 
-### Chat Session Management
-Handles:
-- Conversations
-- Streaming responses
-- Session persistence
-- Context tracking
+---
 
-### Context Composition
-Builds focused AI context using:
-- CCC queries
-- Repository memory
-- Active task state
-- Relevant files
-- Skill instructions
+### 5. Risks and Mitigations
+* **Risk**: The target system lacks `python3` or the custom CCC Python bindings are absent.
+  - **Mitigation**: The system detects failures and switches transparently to local Node-native regex scanners for symbol mapping and file searching.
+* **Risk**: Deleting or overwriting critical configuration files by accident.
+  - **Mitigation**: The `approvalManager` enforces a mandatory security gate in the UI, blocking any write operation that modifies existing files or creates files larger than 1000 characters until a user actively confirms.
 
-Context assembly should be deterministic and minimal.
-
-### Task Execution
-Responsible for:
-- Structured task planning
-- Tool execution
-- Validation workflows
-- Retries
-- Status updates
-
-### Tool Orchestration
-Responsible for:
-- Invoking tools
-- Validating tool permissions
-- Capturing outputs
-- Error handling
-
-### Model Routing
-Routes tasks to appropriate Gemini models.
-
-### Memory Management
-Maintains:
-- Repository memory
-- Session memory
-- Task history
-- Architectural notes
-
-Storage:
-- SQLite
-- Markdown
-- JSON
-
-### Skill Runtime
-Responsible for:
-- Loading skills
-- Evaluating triggers
-- Injecting skill instructions
-- Attaching skill resources
-
-## Repository Structure
-
-- `src/` - Backend and Frontend source
-  - `server/` - Runtime orchestration server (Express)
-  - `client/` - Frontend PWA (React + Tailwind)
-- `packages/` (Simulated or actual subdirectories)
-  - `ccc-adapter/` - Bridge between runtime and CCC
-  - `agent/` - Task planning and execution
-  - `tools/` - Deterministic tool runtime
-  - `memory/` - Persistent memory system
-  - `skills/` - Skill loading and execution
-- `data/` - Memory, sessions, tasks
-- `skills/` - Default skills definitions
-
-## Persistence
-
-### SQLite
-Used for:
-- Sessions
-- Tasks
-- Memory index
-- Settings
-
-### File Storage
-Used for:
-- Markdown memories
-- Skill definitions
-- Task logs
-- Generated plans
-
-## Security Model
-
-### Allowed
-- Local filesystem access
-- Local git operations
-- Local command execution
-
-### Restricted
-- Destructive commands without approval
-- Unrestricted shell execution
-- Automatic external uploads
-
-## Mobile Architecture
-The frontend MUST function as:
-- Responsive web app
-- Installable PWA
-- Touch-friendly UI
-
-Primary mobile workflows:
-- Ask questions
-- Review diffs
-- Approve changes
-- Inspect repositories
-- Upload files/images
+* **Confidence**: `High` (Observed in `src/server/tools/index.ts` and `src/server/ccc/index.ts`).
