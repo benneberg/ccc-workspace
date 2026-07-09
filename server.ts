@@ -16,6 +16,7 @@ import * as auth from "./src/server/auth.ts";
 import { repoService } from "./src/server/repoService.ts";
 import { chatStream } from "./src/server/ai.ts";
 import { memoryService } from "./src/server/memory.ts";
+import { approvalManager } from "./src/server/approvalManager.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -49,6 +50,7 @@ async function startServer() {
   console.log("Initializing WebSocket server...");
   wss.on("connection", (ws: WebSocket) => {
     console.log("Client connected");
+    approvalManager.registerSocket(ws);
     ws.on("message", async (data) => {
       try {
         const payload = JSON.parse(data.toString());
@@ -69,6 +71,10 @@ async function startServer() {
             ws.send(JSON.stringify({ type: "error", message: e.message }));
           }
           ws.send(JSON.stringify({ type: "stream_end" }));
+        } else if (payload.type === "approve_write") {
+          const { id, approved } = payload;
+          approvalManager.handleApprovalResponse(id, approved);
+          ws.send(JSON.stringify({ type: "approval_processed", id, approved }));
         } else if (payload.type === "tool_exec") {
           const { id, name, args, currentRepo } = payload;
           const workingDir = currentRepo ? path.resolve(process.cwd(), "mounted_repos", currentRepo) : process.cwd();
@@ -94,6 +100,8 @@ async function startServer() {
               case "ccc_align": result = await ccc.align(args.pkmlPath); break;
               case "ccc_workspace": result = await ccc.workspace(args.subCommand, ...(args.args || [])); break;
               case "ccc_index": result = await ccc.index(args.repoPath || workingDir); break;
+              case "gitStatus": result = await tools.gitStatus(workingDir); break;
+              case "gitDiff": result = await tools.gitDiff(args.cached || false, workingDir); break;
               default: result = { error: "Unknown tool" };
             }
           } catch (e: any) {

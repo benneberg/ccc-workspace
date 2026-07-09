@@ -33,6 +33,15 @@ export default function App() {
   const [isCloning, setIsCloning] = useState(false);
 
   const [activeTask, setActiveTask] = useState<{title: string, steps: TaskStep[]} | null>(null);
+  const [pendingApprovals, setPendingApprovals] = useState<{ id: string, filePath: string, content: string, reason: string }[]>([]);
+
+  const handleApproveWrite = (id: string, approved: boolean) => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ type: "approve_write", id, approved }));
+      setPendingApprovals(prev => prev.filter(p => p.id !== id));
+    }
+  };
+
   const handleDeleteRepo = async (name: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm(`Delete ${name}?`)) return;
@@ -221,6 +230,13 @@ export default function App() {
           }
           return prev;
         });
+      } else if (data.type === "pending_approval") {
+        setPendingApprovals(prev => [...prev, {
+          id: data.id,
+          filePath: data.filePath,
+          content: data.content,
+          reason: data.reason
+        }]);
       } else if (data.type === "error") {
         setMessages(prev => [...prev, { id: Date.now().toString(), role: "system", content: `Error: ${data.message}` }]);
         setIsAiLoading(false);
@@ -462,8 +478,16 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center space-x-2 lg:space-x-3">
-            <button className="px-2 lg:px-3 py-1 bg-white text-black rounded-full text-[9px] lg:text-[10px] font-black uppercase tracking-wider hover:bg-[#D1D5DB] transition-all">
-              Approve
+            <button 
+              onClick={() => pendingApprovals.length > 0 && handleApproveWrite(pendingApprovals[0].id, true)}
+              disabled={pendingApprovals.length === 0}
+              className={`px-3 py-1.5 rounded-full text-[9px] lg:text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
+                pendingApprovals.length > 0 
+                  ? 'bg-amber-500 text-black hover:bg-amber-400 animate-pulse cursor-pointer' 
+                  : 'bg-[#1F1F1F] text-[#444] cursor-not-allowed'
+              }`}
+            >
+              {pendingApprovals.length > 0 ? `Approve (${pendingApprovals.length})` : 'Approve'}
             </button>
             <button 
               onClick={() => setIsContextOpen(!isContextOpen)}
@@ -565,6 +589,43 @@ export default function App() {
             ))}
           </div>
         </div>
+
+        {/* Pending Approvals Section */}
+        {pendingApprovals.length > 0 && (
+          <div className="mx-auto max-w-3xl w-full px-4 md:px-8 lg:px-12 mb-4 z-10">
+            <div className="bg-[#0B0B0B] border border-amber-500/30 rounded-2xl p-4 shadow-xl shadow-black/40 relative overflow-hidden backdrop-blur-md">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500/50 to-emerald-500/50"></div>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1 flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-amber-500">Security Gate: Write Approval</h4>
+                  </div>
+                  <p className="text-[11px] text-[#888] leading-normal mt-1">
+                    {pendingApprovals[0].reason}
+                  </p>
+                  <div className="mt-2 text-xs font-mono text-white bg-[#050505] px-2.5 py-1.5 rounded border border-[#1A1A1A] truncate">
+                    {pendingApprovals[0].filePath}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
+                  <button 
+                    onClick={() => handleApproveWrite(pendingApprovals[0].id, false)}
+                    className="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-red-400 hover:bg-red-950/20 transition-all border border-red-500/20"
+                  >
+                    Reject
+                  </button>
+                  <button 
+                    onClick={() => handleApproveWrite(pendingApprovals[0].id, true)}
+                    className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black rounded-full text-[10px] font-black uppercase tracking-wider transition-all shadow-md shadow-emerald-950/20"
+                  >
+                    Approve Write
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Mobile Technical Context View */}
         <div className={`flex-1 overflow-y-auto p-4 lg:hidden ${activeMobileView === 'context' ? 'block' : 'hidden'}`}>

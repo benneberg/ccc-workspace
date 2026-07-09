@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
+import { approvalManager } from "../approvalManager.ts";
 
 const execAsync = promisify(exec);
 
@@ -37,13 +38,27 @@ export async function readFile(filePath: string, workingDir: string = process.cw
 export async function writeFile(filePath: string, content: string, workingDir: string = process.cwd()): Promise<ToolResult> {
   const start = Date.now();
   try {
+    const check = await approvalManager.checkWriteApprovalNeeded(filePath, content, workingDir);
+    if (check.needed) {
+      console.log(`[writeFile] Approval needed for ${filePath}. Reason: ${check.reason}`);
+      const approved = await approvalManager.requestApproval(filePath, content, check.reason);
+      if (!approved) {
+        return {
+          success: false,
+          tool: "writeFile",
+          error: "Write operation rejected by user approval step.",
+          duration_ms: Date.now() - start,
+        };
+      }
+    }
+
     const fullPath = path.resolve(workingDir, filePath);
     await fs.mkdir(path.dirname(fullPath), { recursive: true });
     await fs.writeFile(fullPath, content, "utf-8");
     return {
       success: true,
       tool: "writeFile",
-      data: { path: filePath },
+      data: { path: filePath, content },
       duration_ms: Date.now() - start,
     };
   } catch (error: any) {
