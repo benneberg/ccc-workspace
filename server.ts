@@ -9,6 +9,7 @@ import session from "express-session";
 import cookieParser from "cookie-parser";
 import multer from "multer";
 import * as tools from "./src/server/tools/index.ts";
+import { orchestrator } from "./src/server/tools/toolOrchestrator.ts";
 import { taskService } from "./src/server/taskService.ts";
 import { ccc } from "./src/server/ccc.ts";
 import db from "./src/server/db.ts";
@@ -82,8 +83,11 @@ async function startServer() {
           let result;
           try {
             switch (name) {
-              case "readFile": result = await tools.readFile(args.filePath, workingDir); break;
-              case "writeFile": result = await tools.writeFile(args.filePath, args.content, workingDir); break;
+              case "readFile":
+              case "writeFile":
+              case "applyPatch":
+                result = await orchestrator.execute(name, args, workingDir);
+                break;
               case "search": result = await tools.search(args.pattern, args.glob, workingDir); break;
               case "listFiles": result = await tools.listFiles(args.dirPath, workingDir); break;
               case "findFiles": result = await tools.findFiles(args.pattern, workingDir); break;
