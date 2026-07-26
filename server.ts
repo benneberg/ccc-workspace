@@ -49,8 +49,9 @@ async function startServer() {
   const wss = new WebSocketServer({ server });
 
   console.log("Initializing WebSocket server...");
-  wss.on("connection", (ws: WebSocket) => {
-    console.log("Client connected");
+  wss.on("connection", (ws: WebSocket, req) => {
+    const clientOrigin = req.headers.origin || "direct/local";
+    console.log(`[WebSocket] Client connected from origin: ${clientOrigin}`);
     approvalManager.registerSocket(ws);
     ws.on("message", async (data) => {
       try {
@@ -86,11 +87,17 @@ async function startServer() {
               case "readFile":
               case "writeFile":
               case "applyPatch":
+              case "runCommand":
+              case "search":
+              case "listFiles":
+              case "findFiles":
+              case "gitStatus":
+              case "gitDiff":
+              case "gitCommit":
+              case "saveMemory":
+              case "searchMemory":
                 result = await orchestrator.execute(name, args, workingDir);
                 break;
-              case "search": result = await tools.search(args.pattern, args.glob, workingDir); break;
-              case "listFiles": result = await tools.listFiles(args.dirPath, workingDir); break;
-              case "findFiles": result = await tools.findFiles(args.pattern, workingDir); break;
               case "createTask": 
                 const taskId = taskService.createTask(args.title, args.goal, args.repository);
                 result = { success: true, taskId };
@@ -104,8 +111,6 @@ async function startServer() {
               case "ccc_align": result = await ccc.align(args.pkmlPath); break;
               case "ccc_workspace": result = await ccc.workspace(args.subCommand, ...(args.args || [])); break;
               case "ccc_index": result = await ccc.index(args.repoPath || workingDir); break;
-              case "gitStatus": result = await tools.gitStatus(workingDir); break;
-              case "gitDiff": result = await tools.gitDiff(args.cached || false, workingDir); break;
               default: result = { error: "Unknown tool" };
             }
           } catch (e: any) {

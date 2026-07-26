@@ -160,6 +160,17 @@ const toolDefinitions = [
             cached: { type: Type.BOOLEAN, description: "Whether to show staged changes." }
           }
         }
+      },
+      {
+        name: "gitCommit",
+        description: "Stage all changes and create a git commit.",
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            message: { type: Type.STRING, description: "Semantic commit message." }
+          },
+          required: ["message"]
+        }
       }
     ]
   }
@@ -287,6 +298,11 @@ GUIDELINES:
             case "gitDiff": {
               const cmd = call.args.cached ? "git diff --cached" : "git diff";
               result = await tools.runCommand(cmd, workingDir);
+              break;
+            }
+            case "gitCommit": {
+              const { orchestrator } = await import("./tools/toolOrchestrator.ts");
+              result = await orchestrator.execute("gitCommit", call.args, workingDir);
               break;
             }
             default: result = { error: "Unknown tool" };

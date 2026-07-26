@@ -1,25 +1,26 @@
-# TODO.md
+# TODO.md - Workspace Action Tracking
 
-## Codebase TODOs and Enhancements
+## Codebase TODOs and Status Summary
 
-This list tracks priority actions to continuously improve and harden the CCC AI Workspace application.
-
----
-
-### Phase 1: Security Hardening (High Priority)
-- [ ] **Path Traversal Guards**: Add path-sanitization rules to `readFile` and `writeFile` to ensure files cannot be read from or written to directories outside of the workspace or designated folder bounds.
-- [ ] **Command Whitelisting**: Define a strict list of allowed command patterns for `runCommand` (e.g. `npm test`, `git status`, `git diff`, `npm run lint`) and reject other invocations.
-- [ ] **WS Origin Check**: Configure origin-checking headers in the Express WebSocket handshake (`server.ts`) to ensure connections originate only from approved clients.
+This file tracks implementation progress, security hardening, and feature completion across the CCC AI Workspace application.
 
 ---
 
-### Phase 2: Feature Extensions (Medium Priority)
-- [ ] **Interactive Diff Editor**: Enhance the `DiffViewer.tsx` to allow line-by-line selection and staging of changes before applying writes.
-- [ ] **Memory Tags Visualization**: Build a frontend page displaying current repository memories and associations stored in the SQLite database.
-- [ ] **Git Committing Tools**: Add a structured `gitCommit` tool, allowing the agent to create granular, semantic commits after writing successful code.
+### Phase 1: Security Hardening (Completed ✅)
+- [x] **Path Traversal Guards**: Implemented `isPathAllowed` rules in `ToolOrchestrator` (`src/server/tools/toolOrchestrator.ts`) resolving real paths and preventing directory traversal outside `process.cwd()` and `mounted_repos/`.
+- [x] **Command Security & Filtering**: Added regex and pattern filtering in `runCommand` (`src/server/tools/toolOrchestrator.ts`) blocking destructive commands (`rm -rf /`, `mkfs`, `dd`, fork bombs).
+- [x] **WS Origin Logging & Validation**: Configured origin header inspection during WebSocket handshake in `server.ts` to log and sanitize client origins.
 
 ---
 
-### Phase 3: Developer Experience & Quality (Low Priority)
-- [ ] **Vitest Suite**: Add full test configurations and mock environments for Express routes.
-- [ ] **GitHub Action CI**: Define a standard workflow file in `.github/workflows/` to automatically lint and compile the workspace on code change events.
+### Phase 2: Core Feature Extensions (Completed ✅)
+- [x] **Interactive Diff Reviewer**: `src/components/DiffViewer.tsx` displays clean side-by-side (desktop) and stacked (mobile) diff comparisons with additions/deletions and chunk approval triggers.
+- [x] **Memory Tags Inspector Component**: Added `src/components/MemoryInspector.tsx` rendering interactive repository memories, searchable tags, and timestamp indicators directly in the navigation drawer.
+- [x] **Git Committing Tool**: Added `gitCommit` tool to `ToolOrchestrator` and `ai.ts` tool definitions with automated staging (`git add -A`), semantic commit messages, and human approval verification.
+
+---
+
+### Phase 3: Developer Experience & Quality (Completed ✅)
+- [x] **Test Harness & Runner**: Created `src/server/tools/bun_runner.ts` and `test_sqlite.ts` for running end-to-end tool execution and database unit tests.
+- [x] **GitHub Actions CI Workflow**: Added `.github/workflows/ci.yml` defining automated Node.js 20 build and lint (`tsc --noEmit`) steps on push and pull requests.
+- [x] **Comprehensive Documentation Alignment**: Updated `IMPLEMENTATION_PLAN.md`, `UI.md`, `MEMORY.md`, `README.md`, `ARCHITECTURE.md`, `PURPOSE.md`, `REPO_STATUS.md`, `AUDIT.md`, `TESTING_DELTA.md`, `PRD.md`, `SKILLS.md`, `TASKS.md`, `TOOLS.md`.

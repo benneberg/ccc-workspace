@@ -349,3 +349,155 @@ orchestrator.register({
     throw new Error("Unsupported patch format. Please use unified diff format or standard <<<<<<< SEARCH / ======= / >>>>>>> REPLACE blocks.");
   }
 });
+
+// 4. runCommand
+orchestrator.register({
+  name: "runCommand",
+  description: "Executes a shell command within the workspace directory with security filtering.",
+  schema: z.object({
+    command: z.string().min(1, "command must not be empty"),
+  }),
+  permissionCheck: async (args) => {
+    const cmd = args.command.trim().toLowerCase();
+    // Block dangerous destructive system commands
+    const forbiddenPatterns = ["rm -rf /", "rm -rf ~", "mkfs", "dd if=", "> /dev/sd", "shutdown", "reboot", ":(){ :|:& };:"];
+    for (const pattern of forbiddenPatterns) {
+      if (cmd.includes(pattern)) {
+        return {
+          allowed: false,
+          reason: `Command execution blocked: dangerous pattern '${pattern}' detected.`
+        };
+      }
+    }
+    return { allowed: true };
+  },
+  execute: async (args, workingDir) => {
+    const { stdout, stderr } = await execAsync(args.command, { cwd: workingDir });
+    return { stdout, stderr };
+  }
+});
+
+// 5. search
+orchestrator.register({
+  name: "search",
+  description: "Search for text patterns using grep.",
+  schema: z.object({
+    pattern: z.string().min(1, "search pattern must not be empty"),
+    glob: z.string().optional(),
+  }),
+  execute: async (args, workingDir) => {
+    const globCmd = args.glob ? `--include="${args.glob}"` : "";
+    const { stdout, stderr } = await execAsync(`grep -rnE "${args.pattern}" . ${globCmd} --exclude-dir={node_modules,dist,.git} | head -n 50`, { cwd: workingDir });
+    return { results: stdout, stderr };
+  }
+});
+
+// 6. listFiles
+orchestrator.register({
+  name: "listFiles",
+  description: "List contents of a directory within the workspace.",
+  schema: z.object({
+    dirPath: z.string().default("."),
+  }),
+  permissionCheck: async (args, workingDir) => {
+    const isAllowed = await orchestrator.isPathAllowed(args.dirPath, workingDir);
+    return {
+      allowed: isAllowed,
+      reason: isAllowed ? undefined : `Directory path '${args.dirPath}' lies outside allowed workspace bounds.`
+    };
+  },
+  execute: async (args, workingDir) => {
+    const fullPath = path.resolve(workingDir, args.dirPath);
+    const entries = await fs.readdir(fullPath, { withFileTypes: true });
+    const files = entries.map(e => ({
+      name: e.name,
+      isDirectory: e.isDirectory(),
+      path: path.join(args.dirPath, e.name)
+    })).filter(e => !e.name.startsWith(".") && e.name !== "node_modules");
+
+    return { path: args.dirPath, files };
+  }
+});
+
+// 7. findFiles
+orchestrator.register({
+  name: "findFiles",
+  description: "Find files matching a glob pattern.",
+  schema: z.object({
+    pattern: z.string().default("*"),
+  }),
+  execute: async (args, workingDir) => {
+    const { stdout } = await execAsync(`find . -name "${args.pattern}" -not -path "*/node_modules/*" -not -path "*/.git/*" | head -n 100`, { cwd: workingDir });
+    return { results: stdout };
+  }
+});
+
+// 8. gitStatus
+orchestrator.register({
+  name: "gitStatus",
+  description: "Retrieve working directory git status.",
+  schema: z.object({}),
+  execute: async (_, workingDir) => {
+    const { stdout } = await execAsync("git status", { cwd: workingDir }).catch((e) => ({ stdout: e.stdout || e.message }));
+    return { status: stdout || "Working tree clean" };
+  }
+});
+
+// 9. gitDiff
+orchestrator.register({
+  name: "gitDiff",
+  description: "Get repository diff for staged or unstaged changes.",
+  schema: z.object({
+    cached: z.boolean().optional(),
+  }),
+  execute: async (args, workingDir) => {
+    const cmd = args.cached ? "git diff --cached" : "git diff";
+    const { stdout } = await execAsync(cmd, { cwd: workingDir }).catch((e) => ({ stdout: e.stdout || e.message }));
+    return { diff: stdout || "No uncommitted diffs" };
+  }
+});
+
+// 10. gitCommit
+orchestrator.register({
+  name: "gitCommit",
+  description: "Create a git commit with a semantic commit message.",
+  schema: z.object({
+    message: z.string().min(1, "Commit message cannot be empty"),
+  }),
+  requiresApproval: true,
+  execute: async (args, workingDir) => {
+    await execAsync("git add -A", { cwd: workingDir });
+    const { stdout } = await execAsync(`git commit -m "${args.message.replace(/"/g, '\\"')}"`, { cwd: workingDir });
+    return { status: "committed", stdout };
+  }
+});
+
+// 11. saveMemory
+orchestrator.register({
+  name: "saveMemory",
+  description: "Save a persistent memory entry for the repository.",
+  schema: z.object({
+    content: z.string().min(1, "Memory content cannot be empty"),
+    tags: z.array(z.string()).optional(),
+  }),
+  execute: async (args, workingDir) => {
+    const repoName = path.basename(workingDir);
+    const { memoryService } = await import("../memory.ts");
+    return await memoryService.saveMemory(repoName, args);
+  }
+});
+
+// 12. searchMemory
+orchestrator.register({
+  name: "searchMemory",
+  description: "Search persistent repository memory.",
+  schema: z.object({
+    query: z.string().min(1, "Search query cannot be empty"),
+  }),
+  execute: async (args, workingDir) => {
+    const repoName = path.basename(workingDir);
+    const { memoryService } = await import("../memory.ts");
+    return await memoryService.searchMemory(repoName, args.query);
+  }
+});
+

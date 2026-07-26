@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import UserGuide from "./components/UserGuide";
 import TaskPanel, { TaskStep } from "./components/TaskPanel";
 import DiffViewer from "./components/DiffViewer";
+import { MemoryInspector } from "./components/MemoryInspector";
 
 interface MessageBlock {
   type: "text" | "diff" | "task" | "tool";
@@ -381,23 +382,7 @@ export default function App() {
               </section>
 
               <section>
-                <header className="px-3 mb-3">
-                  <p className="text-[10px] uppercase tracking-widest text-[#444] font-bold">Persistent Memory</p>
-                </header>
-                <ul className="space-y-3 text-[11px] px-3 text-[#777]">
-                  <li className="flex justify-between items-center group">
-                    <span className="group-hover:text-[#AAA] transition-colors">Auth Flow</span>
-                    <span className="font-mono text-[#444]">80%</span>
-                  </li>
-                  <li className="flex justify-between items-center group">
-                    <span className="group-hover:text-[#AAA] transition-colors text-white">MQTT Logic</span>
-                    <span className="font-mono text-emerald-500 font-bold uppercase tracking-tighter">NEW</span>
-                  </li>
-                  <li className="flex justify-between items-center group">
-                    <span className="group-hover:text-[#AAA] transition-colors underline decoration-[#333]">Refactor Stats</span>
-                    <span className="font-mono text-[#444]">md</span>
-                  </li>
-                </ul>
+                <MemoryInspector currentRepo={currentRepo || "global"} />
               </section>
 
               <section>
