@@ -3,7 +3,7 @@
 ## Product Purpose & Value Proposition
 
 ### 1. Product Summary
-The **CCC AI Workspace (MiMo)** is a local-first, highly responsive, developer-governed AI coding sandbox. It is engineered to seamlessly bridge the gap between deterministic code cognition (via the Code Context Compiler) and standard large language model (LLM) agents, enabling precise codebase exploration, automated task tracking, and safe, guided code generation.
+The **CCC AI Workspace** is a local-first, highly responsive, developer-governed AI coding sandbox. It is engineered to seamlessly bridge the gap between deterministic code cognition (via the Code Context Compiler) and standard large language model (LLM) agents, enabling precise codebase exploration, automated task tracking, and safe, guided code generation.
 
 ---
 
