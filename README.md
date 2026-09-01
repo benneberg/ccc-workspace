@@ -1,5 +1,13 @@
 # CCC AI Coding Workspace
 
+[![Node.js](https://img.shields.io/badge/Node.js-20.x_LTS-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19.0-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![Express](https://img.shields.io/badge/Express-4.21-000000?style=flat-square&logo=express&logoColor=white)](https://expressjs.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.1-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Gemini API](https://img.shields.io/badge/AI-Gemini_3.5_Flash-8E75B2?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+
 A lightweight, local-first, developer-governed AI software engineering workspace. This application integrates the **Code Context Compiler (CCC)** with state-of-the-art **Gemini LLMs** (@google/genai SDK) inside a secure, interactive, and responsive sandbox to streamline codebase exploration, architectural auditing, and automated file development.
 
 ---

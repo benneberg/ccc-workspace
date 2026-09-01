@@ -1,4 +1,4 @@
-name: CCC Workspace CI
+name: CI
 
 on:
   push:
@@ -6,25 +6,30 @@ on:
   pull_request:
     branches: [ main, master ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-and-lint:
+  validate:
+    name: Lint & Build Verification
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci || npm install
+        run: npm ci
 
-      - name: Typecheck and Lint
+      - name: Static Typecheck & Lint
         run: npm run lint
 
-      - name: Build Application
+      - name: Production Bundle Compilation
         run: npm run build

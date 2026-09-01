@@ -1,0 +1,21 @@
+# CCC AI Coding Workspace - Development Directives
+
+## Architecture & Framework Rules
+- Language: Strict TypeScript 5.8+ with ES Modules ("type": "module").
+- Backend: Express v4 + WebSockets (`ws`) running in Node.js 20+.
+- Frontend: React 19 + Vite 6 + Tailwind CSS v4 + Framer Motion (`motion/react`).
+- AI SDK: Exclusively use `@google/genai` (never legacy `@google/generative-ai` interfaces).
+
+## Code Style & Safety Guidelines
+1. Tool Validation: All tool calls in `toolOrchestrator.ts` MUST use strict Zod schemas for input parsing.
+2. Security Boundaries:
+   - Always validate file paths through `orchestrator.isPathAllowed(filePath, workingDir)`.
+   - Never execute unfiltered shell inputs in `runCommand`; enforce destructive pattern checks.
+   - Guard file overwrite and commit operations with `approvalManager`.
+3. Secret Management:
+   - Access `process.env.GEMINI_API_KEY` ONLY in server-side modules (`src/server/*`).
+   - Never expose raw API keys or secrets prefixed with `VITE_` to client code.
+4. Component Structure:
+   - Keep React components modular and functional with explicit TypeScript props.
+   - Icons MUST be imported exclusively from `lucide-react`.
+   - Modals and drawers must adhere to mobile-friendly touch guidelines (44px minimum target size).
