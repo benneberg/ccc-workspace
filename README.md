@@ -1,4 +1,4 @@
-# CCC AI Coding Workspace (MiMo)
+# CCC AI Coding Workspace
 
 A lightweight, local-first, developer-governed AI software engineering workspace. This application integrates the **Code Context Compiler (CCC)** with state-of-the-art **Gemini LLMs** (@google/genai SDK) inside a secure, interactive, and responsive sandbox to streamline codebase exploration, architectural auditing, and automated file development.
 
